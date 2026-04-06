@@ -47,6 +47,7 @@ const DEFAULT_TEMPLATES = [
 const STORAGE_KEY = "template_board_data";
 let templates = [];
 let currentCategory = "すべて";
+let editingId = null;
 
 // 起動時に読み込み
 function init() {
@@ -116,6 +117,7 @@ function renderCards() {
     card.innerHTML = `
       <div class="card-title">${escapeHtml(t.title)}</div>
       <div class="card-text">${escapeHtml(t.text)}</div>
+      <button class="card-edit" onclick="showEditForm(event, ${t.id})">✏️</button>
       <button class="card-delete" onclick="deleteTemplate(event, ${t.id})">✕</button>
     `;
     card.addEventListener("click", () => copyTemplate(t));
@@ -127,7 +129,6 @@ function renderCategorySelect() {
   const sel = document.getElementById("form-category");
   const cats = getCategories().filter(c => c !== "すべて");
   sel.innerHTML = cats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
-  // 新規カテゴリ入力欄を追加
   sel.innerHTML += `<option value="__new__">＋ 新しいカテゴリを入力...</option>`;
 }
 
@@ -135,7 +136,6 @@ function copyTemplate(t) {
   navigator.clipboard.writeText(t.text).then(() => {
     showToast();
   }).catch(() => {
-    // iOSでのフォールバック
     const ta = document.createElement("textarea");
     ta.value = t.text;
     ta.style.position = "fixed";
@@ -164,12 +164,39 @@ function deleteTemplate(e, id) {
 }
 
 function showAddForm() {
+  editingId = null;
   renderCategorySelect();
   document.getElementById("form-title").value = "";
   document.getElementById("form-text").value = "";
+  document.getElementById("form-heading").textContent = "テンプレートを追加";
   document.getElementById("modal-overlay").classList.remove("hidden");
   document.getElementById("add-form").classList.remove("hidden");
   setTimeout(() => document.getElementById("form-title").focus(), 100);
+}
+
+function showEditForm(event, id) {
+  event.stopPropagation();
+  const t = templates.find(t => t.id === id);
+  if (!t) return;
+  editingId = id;
+  renderCategorySelect();
+  const sel = document.getElementById("form-category");
+  let found = false;
+  for (let opt of sel.options) {
+    if (opt.value === t.category) { sel.value = t.category; found = true; break; }
+  }
+  if (!found) {
+    const opt = document.createElement("option");
+    opt.value = t.category;
+    opt.textContent = t.category;
+    sel.insertBefore(opt, sel.options[sel.options.length - 1]);
+    sel.value = t.category;
+  }
+  document.getElementById("form-title").value = t.title;
+  document.getElementById("form-text").value = t.text;
+  document.getElementById("form-heading").textContent = "テンプレートを編集";
+  document.getElementById("modal-overlay").classList.remove("hidden");
+  document.getElementById("add-form").classList.remove("hidden");
 }
 
 function hideAddForm() {
@@ -193,11 +220,19 @@ function addTemplate() {
     return;
   }
 
-  const newId = templates.length > 0 ? Math.max(...templates.map(t => t.id)) + 1 : 1;
-  templates.push({ id: newId, category, title, text });
+  if (editingId !== null) {
+    templates = templates.map(t =>
+      t.id === editingId ? { ...t, category, title, text } : t
+    );
+    editingId = null;
+  } else {
+    const newId = templates.length > 0 ? Math.max(...templates.map(t => t.id)) + 1 : 1;
+    templates.push({ id: newId, category, title, text });
+    currentCategory = category;
+  }
+
   save();
   hideAddForm();
-  currentCategory = category;
   render();
 }
 
