@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="テンプレ">
+  <title>テンプレートボード</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>テンプレートボード</h1>
+    <button id="add-btn" onclick="showAddForm()">＋ 追加</button>
+  </header>
+
+  <div id="tabs"></div>
+
+  <main id="card-list"></main>
+
+  <!-- 追加フォーム -->
+  <div id="modal-overlay" class="hidden" onclick="hideAddForm()"></div>
+  <div id="add-form" class="hidden">
+    <h2>テンプレートを追加</h2>
+    <label>カテゴリ
+      <select id="form-category"></select>
+    </label>
+    <label>タイトル
+      <input type="text" id="form-title" placeholder="例：参加確認の返信">
+    </label>
+    <label>テキスト
+      <textarea id="form-text" rows="5" placeholder="コピーしたい文章を入力..."></textarea>
+    </label>
+    <div class="form-buttons">
+      <button onclick="hideAddForm()">キャンセル</button>
+      <button class="primary" onclick="addTemplate()">保存</button>
+    </div>
+  </div>
+
+  <!-- コピー完了トースト -->
+  <div id="toast">コピーしました！</div>
+
+  <script src="app.js"></script>
+</body>
+</html>
