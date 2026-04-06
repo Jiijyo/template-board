@@ -1,4 +1,4 @@
-const CACHE = "template-board-v2";
+const CACHE = "template-board-v3";
 const FILES = [
   "./index.html",
   "./style.css",
