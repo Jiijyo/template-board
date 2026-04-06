@@ -97,6 +97,11 @@ let templates = [];
 let currentCategory = "すべて";
 let editingId = null;
 
+// ドラッグ状態
+let dragSrcId = null;
+let dragTargetId = null;
+let dragHappened = false;
+
 // 起動時に読み込み
 function init() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -108,7 +113,6 @@ function init() {
   }
   render();
 
-  // Service Worker 登録
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
@@ -162,15 +166,86 @@ function renderCards() {
   filtered.forEach(t => {
     const card = document.createElement("div");
     card.className = "card";
+    card.dataset.id = t.id;
     card.innerHTML = `
       <div class="card-title">${escapeHtml(t.title)}</div>
       <div class="card-text">${escapeHtml(t.text)}</div>
       <button class="card-edit" onclick="showEditForm(event, ${t.id})">✏️</button>
       <button class="card-delete" onclick="deleteTemplate(event, ${t.id})">✕</button>
     `;
-    card.addEventListener("click", () => copyTemplate(t));
+    card.addEventListener("click", () => {
+      if (dragHappened) { dragHappened = false; return; }
+      copyTemplate(t);
+    });
+    initDragAndDrop(card, t);
     list.appendChild(card);
   });
+}
+
+function initDragAndDrop(card, t) {
+  let pressTimer = null;
+  let dragging = false;
+
+  card.addEventListener('touchstart', (e) => {
+    pressTimer = setTimeout(() => {
+      dragging = true;
+      card.classList.add('dragging');
+      dragSrcId = t.id;
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 500);
+  }, { passive: true });
+
+  card.addEventListener('touchmove', (e) => {
+    if (!dragging) {
+      clearTimeout(pressTimer);
+      return;
+    }
+    e.preventDefault();
+    const touch = e.touches[0];
+    const els = document.elementsFromPoint(touch.clientX, touch.clientY);
+    const targetCard = els.find(el => el.classList.contains('card') && el !== card);
+    document.querySelectorAll('.card.drag-over').forEach(c => c.classList.remove('drag-over'));
+    if (targetCard) {
+      targetCard.classList.add('drag-over');
+      dragTargetId = parseInt(targetCard.dataset.id);
+    } else {
+      dragTargetId = null;
+    }
+  }, { passive: false });
+
+  card.addEventListener('touchend', () => {
+    clearTimeout(pressTimer);
+    if (dragging) {
+      dragHappened = true;
+      card.classList.remove('dragging');
+      document.querySelectorAll('.card.drag-over').forEach(c => c.classList.remove('drag-over'));
+      if (dragSrcId !== null && dragTargetId !== null && dragSrcId !== dragTargetId) {
+        reorderTemplates(dragSrcId, dragTargetId);
+      }
+      dragging = false;
+      dragSrcId = null;
+      dragTargetId = null;
+    }
+  });
+
+  card.addEventListener('touchcancel', () => {
+    clearTimeout(pressTimer);
+    card.classList.remove('dragging');
+    document.querySelectorAll('.card.drag-over').forEach(c => c.classList.remove('drag-over'));
+    dragging = false;
+    dragSrcId = null;
+    dragTargetId = null;
+  });
+}
+
+function reorderTemplates(srcId, targetId) {
+  const srcIndex = templates.findIndex(t => t.id === srcId);
+  const targetIndex = templates.findIndex(t => t.id === targetId);
+  if (srcIndex === -1 || targetIndex === -1) return;
+  const [removed] = templates.splice(srcIndex, 1);
+  templates.splice(targetIndex, 0, removed);
+  save();
+  render();
 }
 
 function renderCategorySelect() {
